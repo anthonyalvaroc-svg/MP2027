@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Reportes Fotográficos Site</title>
+  <meta name="theme-color" content="#0f172a" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" href="icon.png" />
+  <link rel="apple-touch-icon" href="icon.png" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    :root {
+      --bg: #f1f5f9;
+      --surface: #ffffff;
+      --primary: #1d4ed8;
+      --primary-dark: #1e40af;
+      --success: #059669;
+      --warning: #d97706;
+      --danger: #dc2626;
+      --purple: #7c3aed;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding-bottom: 40px; }
+    header {
+      background: #0f172a; color: #fff; padding: 14px 16px;
+      position: sticky; top: 0; z-index: 50; box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    header h1 { font-size: 1.05rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .badge-ver { font-size: 0.7rem; background: #1e293b; color: #94a3b8; padding: 2px 6px; border-radius: 6px; }
+    .container { max-width: 720px; margin: 0 auto; padding: 14px; }
+    .card {
+      background: var(--surface); border-radius: 12px; padding: 14px;
+      margin-bottom: 12px; border: 1px solid var(--border);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      border: none; border-radius: 8px; padding: 10px 14px; font-size: 0.88rem;
+      font-weight: 600; cursor: pointer; text-decoration: none; transition: opacity 0.15s;
+    }
+    .btn:active { opacity: 0.8; }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-warning { background: var(--warning); color: #fff; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-purple { background: var(--purple); color: #fff; }
+    .btn-outline { background: #f8fafc; color: var(--text); border: 1px solid var(--border); }
+    .btn-sm { padding: 7px 10px; font-size: 0.8rem; }
+    .btn-block { width: 100%; }
+    input[type="text"] {
+      width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1;
+      border-radius: 8px; font-size: 0.95rem; margin-bottom: 10px;
+    }
+    .row-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .tabs {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+      margin-bottom: 12px; background: #e2e8f0; padding: 4px; border-radius: 10px;
+    }
+    .tab {
+      border: none; background: transparent; padding: 8px 4px; border-radius: 8px;
+      font-size: 0.76rem; font-weight: 700; color: #475569; cursor: pointer; text-align: center;
+      line-height: 1.2;
+    }
+    .tab.active { background: #fff; color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .subfolder-item {
+      background: #fff; border: 1px solid var(--border); border-radius: 10px;
+      margin-bottom: 8px; overflow: hidden;
+    }
+    .subfolder-header {
+      padding: 12px 14px; display: flex; justify-content: space-between; align-items: center;
+      cursor: pointer; gap: 8px;
+    }
+    .subfolder-title { font-size: 0.9rem; font-weight: 700; color: var(--text); }
+    .subfolder-desc { font-size: 0.76rem; color: var(--muted); margin-top: 3px; line-height: 1.3; }
+    .count-pill {
+      background: #e0e7ff; color: var(--primary); font-size: 0.75rem; font-weight: 700;
+      padding: 3px 8px; border-radius: 999px; white-space: nowrap;
+    }
+    .count-pill.has-files { background: #dcfce7; color: #166534; }
+    .subfolder-body {
+      padding: 12px 14px; border-top: 1px solid var(--border); background: #f8fafc;
+      display: none;
+    }
+    .subfolder-body.open { display: block; }
+    .media-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+      gap: 8px; margin-top: 12px;
+    }
+    .media-card {
+      position: relative; background: #fff; border: 1px solid var(--border);
+      border-radius: 8px; overflow: hidden; display: flex; flex-direction: column;
+    }
+    .media-thumb {
+      width: 100%; height: 85px; object-fit: cover; background: #0f172a; display: block;
+    }
+    .pdf-thumb {
+      width: 100%; height: 85px; background: #fee2e2; color: #b91c1c;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.8rem; text-decoration: none; padding: 4px; text-align: center;
+    }
+    .media-meta {
+      padding: 4px 6px; font-size: 0.65rem; color: #334155; background: #f8fafc;
+      border-top: 1px solid var(--border);
+    }
+    .media-name {
+      font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .media-size { color: #64748b; font-size: 0.62rem; }
+    .btn-del-media {
+      position: absolute; top: 4px; right: 4px; background: rgba(220,38,38,0.92);
+      color: #fff; border: none; border-radius: 50%; width: 22px; height: 22px;
+      font-size: 12px; font-weight: bold; cursor: pointer; line-height: 1;
+    }
+    .hd-badge {
+      display: inline-block; background: #fef3c7; color: #92400e; border: 1px solid #f59e0b;
+      font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 6px; margin-bottom: 8px;
+    }
+    .std-badge {
+      display: inline-block; background: #e0f2fe; color: #075985;
+      font-size: 0.72rem; font-weight: 600; padding: 2px 7px; border-radius: 6px; margin-bottom: 8px;
+    }
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(15,23,42,0.65); z-index: 100;
+      display: none; align-items: center; justify-content: center; padding: 16px;
+    }
+    .modal-backdrop.show { display: flex; }
+    .modal {
+      background: #fff; border-radius: 14px; max-width: 420px; width: 100%;
+      padding: 18px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+    .modal h3 { font-size: 1.05rem; margin-bottom: 8px; }
+    .modal p { font-size: 0.85rem; color: var(--muted); margin-bottom: 14px; line-height: 1.4; }
+    .hidden { display: none !important; }
+    .toast {
+      position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+      background: #0f172a; color: #fff; padding: 10px 16px; border-radius: 999px;
+      font-size: 0.82rem; z-index: 200; box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+      max-width: 92%; text-align: center; display: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div style="display:flex;align-items:center;gap:8px;overflow:hidden;">
+      <button id="btnBack" class="btn btn-outline btn-sm hidden" style="padding:5px 9px;">← Volver</button>
+      <h1 id="headerTitle">Mis Carpetas de Site</h1>
+    </div>
+    <span class="badge-ver">v5</span>
+  </header>
+
+  <div class="container">
+    <!-- VISTA PRINCIPAL: LISTA DE CARPETAS -->
+    <div id="viewHome">
+      <div class="card">
+        <label style="display:block;font-weight:700;font-size:0.9rem;margin-bottom:6px;">Nueva Carpeta Principal (Site)</label>
+        <input type="text" id="newSiteName" placeholder="Ej. SITE_LIMA_NORTE_01" />
+        <button id="btnCreateSite" class="btn btn-primary btn-block">+ Crear Carpeta con Plantilla</button>
+      </div>
+      <div id="sitesList"></div>
+    </div>
+
+    <!-- VISTA DETALLE DE SITE -->
+    <div id="viewSite" class="hidden">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+          <div>
+            <div style="font-size:0.75rem;color:var(--muted);">Carpeta Principal</div>
+            <div id="currentSiteName" style="font-size:1.1rem;font-weight:800;"></div>
+          </div>
+          <button id="btnRenameSite" class="btn btn-outline btn-sm">✏️ Renombrar</button>
+        </div>
+        <div class="row-actions">
+          <button id="btnZipSite" class="btn btn-purple" style="flex:1;">📦 Comprimir ZIP</button>
+          <button id="btnShareSite" class="btn btn-success" style="flex:1;">📤 Compartir ZIP</button>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="f17">1. F17-CARPETA DE FOTOS (29)</button>
+        <button class="tab" data-tab="formatos">2. FORMATOS MP</button>
+        <button class="tab" data-tab="mp">3. MANTENIMIENTO PREVENTIVO (30)</button>
+      </div>
+
+      <input type="text" id="searchSubfolder" placeholder="🔍 Buscar subcarpeta..." style="margin-bottom:10px;" />
+      <div id="subfoldersContainer"></div>
+    </div>
+  </div>
+
+  <!-- INPUTS OCULTOS PARA SUBIR ARCHIVOS Y CÁMARA -->
+  <input type="file" id="inputGallery" class="hidden" multiple />
+  <input type="file" id="inputDirectCam" accept="image/*" capture="environment" class="hidden" />
+
+  <!-- MODAL PARA TIMESTAMP CAMERA (PRO Y GRATIS) -->
+  <div id="modalTimestamp" class="modal-backdrop">
+    <div class="modal">
+      <h3>📷 Abrir Timestamp Camera</h3>
+      <p>Elige la aplicación que tienes instalada para tomar tu foto/video con marca de agua. Luego súbela aquí conservando su nombre original:</p>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <button id="btnOpenTsPro" class="btn btn-primary btn-block">Abrir Timestamp Camera Pro (Pago)</button>
+        <button id="btnOpenTsFree" class="btn btn-outline btn-block">Abrir Timestamp Camera Free (Gratis)</button>
+        <button id="btnUploadAfterTs" class="btn btn-success btn-block">📂 Seleccionar foto/video ya tomado</button>
+        <button id="btnCloseTsModal" class="btn btn-sm" style="background:transparent;color:var(--muted);margin-top:4px;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PARA COMPARTIR ZIP EN DOS PASOS SEGUROS -->
+  <div id="modalShare" class="modal-backdrop">
+    <div class="modal">
+      <h3 id="shareModalTitle">Preparando archivo ZIP...</h3>
+      <p id="shareModalDesc">Empaquetando carpetas y archivos. Por favor espera un momento.</p>
+      <div id="shareReadyActions" class="hidden" style="display:flex;flex-direction:column;gap:8px;">
+        <button id="btnTriggerNativeShare" class="btn btn-success btn-block">📤 Enviar ZIP ahora (WhatsApp / Drive)</button>
+        <button id="btnDownloadPreparedZip" class="btn btn-purple btn-block">⬇️ Guardar ZIP en Descargas</button>
+      </div>
+      <button id="btnCloseShareModal" class="btn btn-outline btn-block" style="margin-top:10px;">Cerrar</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
